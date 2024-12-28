@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Sign In | Smart Trash Bin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="login form">
+    <header>Login</header>
+    <form id="loginForm">
+      <input type="email" id="email" placeholder="Enter your email" required />
+      <input type="password" id="password" placeholder="Enter your password" required minlength="6" />
+      <a href="#">Forgot password?</a>
+      <input type="submit" id="login" class="button" value="Login" />
+    </form>
+    <div class="signup">
+      <span>Don't have an account? <a href="index.html">Sign Up</a></span>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  // Import the functions you need from the SDKs
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+  import { getDatabase, ref, update } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+
+  // Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyD2Hyys1OHAfeYyTcpyJxTPl-nvRpCPIg0",
+    authDomain: "porjectptc.firebaseapp.com",
+    databaseURL: "https://porjectptc-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "porjectptc",
+    storageBucket: "porjectptc.firebasestorage.app",
+    messagingSenderId: "874343486828",
+    appId: "1:874343486828:web:02dfd30381cfe8d65d4f49"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const database = getDatabase(app);
+  const auth = getAuth();
+
+  // Handle login form submission
+  const loginForm = document.getElementById('loginForm');
+  loginForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!email || !password) {
+      alert("Please fill out all fields.");
+      return;
+    }
+
+    signInWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        const user = userCredential.user;
+        const dt = new Date();
+
+        update(ref(database, 'users/' + user.uid), {
+          last_login: dt
+        });
+
+        alert('User logged in successfully!');
+        
+        // Redirect to the dashboard page after login
+        window.location.href = "dashboard.html";  // Replace with your actual dashboard URL
+      })
+      .catch((error) => {
+        alert(`Login error: ${error.message}`);
+      });
+  });
+
+  // Detect authentication state changes
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      console.log(`User is logged in: ${user.email}`);
+    } else {
+      console.log('No user is signed in.');
+    }
+  });
+
+  // Handle logout
+</script>
+</body>
+</html>

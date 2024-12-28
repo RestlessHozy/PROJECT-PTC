@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Smart Trash Bin</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        footer {
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+        .bg-green {
+            background-color: #32CD32 !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-green">
+        <div class="container">
+          <a class="navbar-brand" href="dashboard.html">Smart Trash Bin</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="rute.html">Lihat Peta</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="lihatdata.html">Lihat Data Sampah</a>
+                    </li>
+                </ul>
+                <button class="btn btn-danger" id="logoutButton">Log out</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Rute dan Diagram Section -->
+    <div class="container my-5">
+        <h2 class="text-center mb-5">Rute Optimal</h2>
+        
+        <!-- Card for Rute Information -->
+        <div class="card mb-5">
+            <div class="card-body">
+                <h5 class="card-title">Informasi Rute</h5>
+                <p id="routeInfo" class="card-text">Memuat rute...</p>
+            </div>
+        </div>
+        
+        <!-- Card for Chart -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title text-center">Diagram Volume Sampah</h5>
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer bg-green text-white text-center py-3">
+        <p>&copy; 2024 Smart Trash Bin. All Rights Reserved.</p>
+    </footer>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyD2Hyys1OHAfeYyTcpyJxTPl-nvRpCPIg0",
+            authDomain: "porjectptc.firebaseapp.com",
+            databaseURL: "https://porjectptc-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "porjectptc",
+            storageBucket: "porjectptc.appspot.com",
+            messagingSenderId: "874343486828",
+            appId: "1:874343486828:web:02dfd30381cfe8d65d4f49"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        const coordinates = {
+            "DINAS LINGKUNGAN HIDUP": [-3.988473, 119.652243],
+            "TITIK1": [-4.002, 119.642],
+            "TITIK2": [-3.991070, 119.633416]
+        };
+
+        const graph = new Map();
+        graph.set("DINAS LINGKUNGAN HIDUP", { "TITIK1": 1.5, "TITIK2": 2.0 });
+        graph.set("TITIK1", { "DINAS LINGKUNGAN HIDUP": 1.5, "TITIK2": 1.2 });
+        graph.set("TITIK2", { "DINAS LINGKUNGAN HIDUP": 2.0, "TITIK1": 1.2 });
+
+        function dijkstra(start, graph) {
+            const distances = {};
+            const visited = new Set();
+            const queue = [[start, 0]];
+
+            for (const node of graph.keys()) {
+                distances[node] = Infinity;
+            }
+            distances[start] = 0;
+
+            while (queue.length > 0) {
+                const [currentNode, currentDistance] = queue.shift();
+                if (visited.has(currentNode)) continue;
+                visited.add(currentNode);
+
+                for (const [neighbor, weight] of Object.entries(graph.get(currentNode))) {
+                    const distance = currentDistance + weight;
+                    if (distance < distances[neighbor]) {
+                        distances[neighbor] = distance;
+                        queue.push([neighbor, distance]);
+                    }
+                }
+            }
+
+            return distances;
+        }
+
+        function getShortestPath(start, targets, distances, graph) {
+            const path = [start];
+            let currentNode = start;
+
+            while (targets.length > 0) {
+                let nextNode = null;
+                let shortestDistance = Infinity;
+
+                for (const target of targets) {
+                    if (distances[target] < shortestDistance) {
+                        shortestDistance = distances[target];
+                        nextNode = target;
+                    }
+                }
+
+                if (!nextNode) break;
+
+                path.push(nextNode);
+                targets.splice(targets.indexOf(nextNode), 1);
+                currentNode = nextNode;
+            }
+
+            return path;
+        }
+
+        async function fetchPrediction(input) {
+            try {
+                const response = await fetch("http://localhost:8000/predict/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(input),
+                });
+                if (response.ok) {
+                    return await response.json();
+                }
+                console.error("Prediction API error:", response.status, response.statusText);
+                return null;
+            } catch (error) {
+                console.error("Error fetching prediction:", error);
+                return null;
+            }
+        }
+
+        onValue(ref(database), async (snapshot) => {
+            const data = snapshot.val();
+            const validPoints = ["DINAS LINGKUNGAN HIDUP"];
+            const barData = [];
+            const barLabels = [];
+
+            if (data) {
+                for (const [key, info] of Object.entries(data)) {
+                    if (coordinates[key]) {
+                        const input = {
+                          fill_level: Math.round(info.Fullness ?? 0),
+                          duration_to_full: Math.round((info.DurationToFull ?? 0) / 3600),
+                          crowded_location: info.CrowdedLocation ?? 0,
+                          weekly_frequency: Math.round(info.WeeklyFrequency ?? 0),
+                          ir: info.IR ?? 0,
+                        };
+
+                        const prediction = await fetchPrediction(input);
+                        let shouldPick = input.fill_level >= 75 && prediction?.recommendation === "pick";
+
+                        if (input.fill_level === 100 && input.ir === 0) {
+                            shouldPick = true;
+                        }
+
+                        let displayed_fill_level = input.fill_level;
+                        if (input.fill_level === 100 && input.ir === 1) {
+                            displayed_fill_level = 95;
+                        }
+                        
+                        barLabels.push(key);
+                        barData.push(displayed_fill_level);
+
+                        if (shouldPick) {
+                            validPoints.push(key);
+                        }
+                    }
+                }
+
+                const distances = dijkstra("DINAS LINGKUNGAN HIDUP", graph);
+                const shortestPath = getShortestPath("DINAS LINGKUNGAN HIDUP", validPoints.slice(1), distances, graph);
+
+                document.getElementById("routeInfo").innerHTML = `<p>Rute Optimal: ${shortestPath.join(" >> ")}</p>`;
+
+                const ctx = document.getElementById("barChart").getContext("2d");
+                new Chart(ctx, {
+                    type: "bar",
+                    data: {
+                        labels: barLabels,
+                        datasets: [{
+                            label: "Volume Sampah (%)",
+                            data: barData,
+                            backgroundColor: "rgba(75, 192, 192, 0.2)",
+                            borderColor: "rgba(75, 192, 192, 1)",
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

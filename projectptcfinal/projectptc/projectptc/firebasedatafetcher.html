@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firebase Data Fetcher</title>
+</head>
+<body>
+  <h1>Data from Firebase</h1>
+  <div id="output">
+    <h2>TITIK1</h2>
+    <pre id="outputTitik1">Loading...</pre>
+
+    <h2>TITIK2</h2>
+    <pre id="outputTitik2">Loading...</pre>
+  </div>
+
+  <script>
+    // Konfigurasi Firebase
+    const databaseURL = "https://porjectptc-default-rtdb.asia-southeast1.firebasedatabase.app";
+    const apiKey = "AIzaSyCsPcnfpFLBcQkL65EkUR5d1AgSyPdq6RE";
+
+    // Path ke data di database
+    const dataPaths = {
+      TITIK1: "/TITIK1.json",
+      TITIK2: "/TITIK2.json"
+    };
+
+    // Fungsi untuk mengambil data dari Firebase
+    async function fetchData(path, outputElementId) {
+      try {
+        const response = await fetch(`${databaseURL}${path}?auth=${apiKey}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data) {
+          console.log(`Data dari ${path}:`, data);
+          displayData(data, outputElementId);
+        } else {
+          console.log(`Data tidak ditemukan di ${path}.`);
+          document.getElementById(outputElementId).textContent = "No data found.";
+        }
+      } catch (error) {
+        console.error(`Gagal mengambil data dari ${path}:`, error);
+        document.getElementById(outputElementId).textContent = `Error: ${error.message}`;
+      }
+    }
+
+    // Fungsi untuk menampilkan data ke HTML
+    function displayData(data, outputElementId) {
+      const outputElement = document.getElementById(outputElementId);
+      outputElement.textContent = JSON.stringify(data, null, 2);
+
+      // Menampilkan data spesifik
+      if (data.DurationToFull !== undefined) {
+        const durationToFull = document.createElement("p");
+        durationToFull.textContent = `Durasi Pengisian: ${data.DurationToFull} detik`;
+        document.getElementById(outputElementId).appendChild(durationToFull);
+      }
+
+      if (data.Fullness !== undefined) {
+        const fullness = document.createElement("p");
+        fullness.textContent = `Tingkat Kepenuhan: ${data.Fullness}%`;
+        document.getElementById(outputElementId).appendChild(fullness);
+      }
+
+      if (data.IR !== undefined) {
+        const irStatus = document.createElement("p");
+        irStatus.textContent = `Status Sensor IR: ${
+          data.IR === 0 ? "Mendeteksi Objek" : "Tidak Mendeteksi Objek"
+        }`;
+        document.getElementById(outputElementId).appendChild(irStatus);
+      }
+    }
+
+    // Panggil fungsi fetchData untuk TITIK1 dan TITIK2
+    fetchData(dataPaths.TITIK1, "outputTitik1");
+    fetchData(dataPaths.TITIK2, "outputTitik2");
+  </script>
+</body>
+</html>

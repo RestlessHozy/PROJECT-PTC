@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Login & Registration Form</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="registration form">
+      <header>Signup</header>
+      <form id="signupForm">
+        <input type="text" id="username" name="username" placeholder="Enter your username" required />
+        <input type="email" id="email" name="email" placeholder="Enter your email" required />
+        <input type="password" id="password" name="password" placeholder="Create a password" required minlength="6" />
+        <input type="submit" id="signUp" name="signup_submit" class="button" value="Sign up" />
+      </form>
+      <div class="signup">
+        <span>Already have an account? <a href="signin.html">Login</a></span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // Import the functions you need from the SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+    import { getDatabase, set, ref } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyD2Hyys1OHAfeYyTcpyJxTPl-nvRpCPIg0",
+      authDomain: "porjectptc.firebaseapp.com",
+      databaseURL: "https://porjectptc-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "porjectptc",
+      storageBucket: "porjectptc.firebasestorage.app",
+      messagingSenderId: "874343486828",
+      appId: "1:874343486828:web:02dfd30381cfe8d65d4f49"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const auth = getAuth();
+
+    // Add event listener to the form
+    const signupForm = document.getElementById('signupForm');
+    signupForm.addEventListener('submit', (e) => {
+      e.preventDefault(); // Prevent default form submission
+      
+      const username = document.getElementById('username').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!username || !email || !password) {
+        alert("Please fill out all fields.");
+        return;
+      }
+
+      // Firebase sign-up logic
+      createUserWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+          const user = userCredential.user;
+
+          // Store user data in Realtime Database
+          set(ref(database, 'users/' + user.uid), {
+            username: username,
+            email: email
+          })
+          .then(() => {
+            alert('User created successfully and data saved!');
+          })
+          .catch((error) => {
+            console.error("Database error: ", error);
+            alert(`Database error: ${error.message}`);
+          });
+        })
+        .catch((error) => {
+          const errorCode = error.code;
+          const errorMessage = error.message;
+          
+          alert(`Error: ${errorMessage}`);
+        });
+    });
+  </script>
+</body>
+</html>
